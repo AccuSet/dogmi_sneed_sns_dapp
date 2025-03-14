@@ -166,6 +166,43 @@ document.querySelector("form").addEventListener("submit", async (e) => {
   return false;
 });
 
+// Countdown duration (30 days in milliseconds)
+const COUNTDOWN_DURATION = 30 * 24 * 60 * 60 * 1000;
+
+// Set the countdown start date (current date)
+const countdownStartDate = new Date();
+const countdownEndDate = new Date(countdownStartDate.getTime() + COUNTDOWN_DURATION);
+
+// Function to update the countdown timer
+function updateCountdown() {
+  const currentTime = new Date();
+  const timeDifference = countdownEndDate - currentTime;
+  
+  // Check if countdown has ended
+  if (timeDifference <= 0) {
+    document.getElementById('countdown-timer').innerHTML = "<span class='expired'>EXPIRED</span>";
+    return;
+  }
+  
+  // Calculate days, hours, minutes, and seconds
+  const days = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeDifference % (1000 * 60)) / 1000);
+  
+  // Update the countdown display
+  document.getElementById('countdown-timer').innerHTML = 
+    `<span class="countdown-value">${days}</span> days, 
+     <span class="countdown-value">${hours}</span> hours, 
+     <span class="countdown-value">${minutes}</span> minutes`;
+}
+
+// Initialize countdown and update it every minute
+document.addEventListener('DOMContentLoaded', function() {
+  updateCountdown();
+  setInterval(updateCountdown, 1000*60);
+});
+
 let status = await dogmi_sneed_dapp_backend.get_status();
 let active = status["active"];
 if (active) {

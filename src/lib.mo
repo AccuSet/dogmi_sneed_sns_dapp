@@ -57,7 +57,6 @@ import Buffer "mo:base/Buffer";
 import Result "mo:base/Result";
 import Principal "mo:base/Principal";
 import Error "mo:base/Error";
-import Debug "mo:base/Debug";
 
 import T "Types";
 
@@ -1039,6 +1038,54 @@ module {
       Principal.isAnonymous(Principal.fromActor(context.state.persistent.old_indexer_canister)) == false and
       Principal.isAnonymous(Principal.fromActor(context.state.persistent.new_token_canister)) == false and 
       Principal.isAnonymous(Principal.fromActor(context.state.persistent.new_indexer_canister)) == false 
+  };
+
+  private func get_dao_treasury_account(context : T.ConverterContext) : T.Account {
+      {
+          owner = context.governance;
+          subaccount = ?Blob.fromArray([
+              196, 165, 142, 62, 150, 250, 82, 23,
+              184, 45, 104, 76, 243, 154, 145, 16,
+              243, 16, 102, 111, 225, 189, 230, 63,
+              132, 17, 159, 224, 0, 255, 11, 123
+          ]);
+      };
+  };
+
+  public func transfer_remaining_funds(context : T.ConverterContext) : async* Result.Result<Nat, Text> {
+      
+      try {
+          let new_token = context.state.persistent.new_token_canister;
+          let balance = await new_token.icrc1_balance_of(context.converter);
+          let fees = await new_token.icrc1_fee();
+          
+          if (balance <= fees) {
+              return #err("No balance");
+          };
+
+          let dao_treasury_account = get_dao_treasury_account(context);
+
+          // Transfer to DAO treasury
+          let transfer_args : T.TransferArgs = {
+              from_subaccount = null;
+              to = dao_treasury_account;
+              amount = balance-fees;
+              fee = null;
+              memo = null;
+              created_at_time = null;
+          };
+
+          let transfer_result = await new_token.icrc1_transfer(transfer_args);
+          
+          switch(transfer_result) {
+              case (#Ok(block_index)) {
+                  #ok(block_index)
+              };
+              case (#Err(e)) { #err("Transfer error") };
+          };
+      } catch (e) {
+          #err("External canister error " # Error.message(e));
+      };
   };
 
   public func get_log(context : T.ConverterContext) : [T.LogItem] {

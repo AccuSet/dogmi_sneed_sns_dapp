@@ -12,6 +12,8 @@ import Buffer "mo:base/Buffer";
 import Result "mo:base/Result";
 import Principal "mo:base/Principal";
 import Error "mo:base/Error";
+import Timer "mo:base/Timer";
+import Debug "mo:base/Debug";
 
 import Converter ".."; 
 import T "../Types";
@@ -29,6 +31,8 @@ shared ({ caller = _initializer_ }) actor class SneedConverter() : async T.Conve
     state.ephemeral.old_latest_sent_txids := Map.fromIter<Principal, T.TxIndex>(persistent.stable_old_latest_sent_txids.vals(), 10, Principal.equal, Principal.hash);
     state.ephemeral.cooldowns := Map.fromIter<Principal, Time.Time>(persistent.stable_cooldowns.vals(), 10, Principal.equal, Principal.hash);
     state.ephemeral.log := Buffer.fromArray<T.LogItem>(persistent.stable_log); 
+
+    private var transferTimer : Timer.TimerId = 0;
     
 // PUBLIC API
 
@@ -102,6 +106,26 @@ shared ({ caller = _initializer_ }) actor class SneedConverter() : async T.Conve
 
 // PRIVATE FUNCTIONS
 
+    private func setupAutomaticTransfer() {
+      // Cancel any existing timer
+      Timer.cancelTimer(transferTimer);
+      
+      // Set up new timer
+      transferTimer := Timer.setTimer(#seconds(60*60*24*30), func() : async () {
+          try {
+              let result = await* Converter.transfer_remaining_funds(get_context_with_anon_account(Principal.fromActor(this)));
+              
+              // Handle result
+              switch(result) {
+                  case (#ok(_)) {  };
+                  case (#err(e)) { Debug.print("Error in fund transfer: " # e); };
+              };
+          } catch (e) {
+              Debug.print("Error transferring funds: " # Error.message(e));
+          };
+      });
+    };
+
     // The account representing this dApp
     private func sneed_converter_account() : T.Account {
         {
@@ -154,6 +178,7 @@ shared ({ caller = _initializer_ }) actor class SneedConverter() : async T.Conve
       persistent.stable_old_latest_sent_txids := [];
       persistent.stable_cooldowns := [];
       persistent.stable_log := [];
+      setupAutomaticTransfer();
     };
 
 };
