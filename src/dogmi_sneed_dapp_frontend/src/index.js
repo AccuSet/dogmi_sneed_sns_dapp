@@ -166,12 +166,7 @@ document.querySelector("form").addEventListener("submit", async (e) => {
   return false;
 });
 
-// Countdown duration (30 days in milliseconds)
-const COUNTDOWN_DURATION = 30 * 24 * 60 * 60 * 1000;
-
-// Set the countdown start date (current date)
-const countdownStartDate = new Date();
-const countdownEndDate = new Date(countdownStartDate.getTime() + COUNTDOWN_DURATION);
+const countdownEndDate = new Date('2025-04-16T00:00:00Z');
 
 // Function to update the countdown timer
 function updateCountdown() {
